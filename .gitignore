@@ -1,0 +1,5 @@
+.idea
+__pycache__
+.DS_Store
+old_results
+infinite_horizon/eps*
