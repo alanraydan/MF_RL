@@ -44,12 +44,16 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     episodes_completed = 0
 
     try:
+
         print(f'Run number {run_number}:')
         print('Training model...')
+
         for episode in trange(episodes):
+
             rho_mean = 1 / (1 + episode) ** omega
             state = torch.normal(state_mean[-1, 1], state_std[-1]).view(1, 1)
             bound = 3 * state_std[-1] + state_mean[-1, 1]
+
             if state > bound:
                 state = bound.view(1, 1)
             elif state < -bound:
@@ -139,6 +143,6 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
 
 
 if __name__ == '__main__':
-    runs = [4, 5, 6]
+    runs = ['test']
     episodes, rho_V, rho_pi, omega = get_params()
     Parallel(n_jobs=len(runs))(delayed(train_actor_critic)(n, episodes, rho_V, rho_pi, omega) for n in runs)
