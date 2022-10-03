@@ -35,13 +35,13 @@ def plot_results(policy, mean, env, episodes, critic_lr, actor_lr, omega, direct
     Plots the learned control and optimal control for the given environment
     and stores the plots in a file named 'filename'.
     """
-    x_vals = torch.linspace(-1.5, 3, 100).view(-1, 1)
+    x_vals = torch.linspace(-1.5, 3, 100).view(-1, 1).double()
     with torch.no_grad():
         action_mean = policy(x_vals).loc
     fig, ax1 = plt.subplots()
-    ax1.plot(x_vals, action_mean, label='learned control')
-    ax1.plot(x_vals, env.optimal_control_mfg(x_vals), label='MFG control')
-    ax1.plot(x_vals, env.optimal_control_mfc(x_vals), label='MFC control')
+    ax1.plot(x_vals, action_mean, '--', linewidth=2, label='learned control', color='tab:blue')
+    ax1.plot(x_vals, env.optimal_control_mfg(x_vals), linewidth=2, label='MFG control', color='tab:orange')
+    ax1.plot(x_vals, env.optimal_control_mfc(x_vals), linewidth=2, label='MFC control', color='tab:green')
     ax1.set_xlabel(r'$x$')
     ax1.set_ylabel(r'$\alpha(x)$')
     ax1.legend()
@@ -73,7 +73,7 @@ def generate_asymptotic_samples(policy, mean, env, num_samples):
     init_distribution = torch.distributions.normal.Normal(loc=0.0, scale=1.0)
     print('Generating asymptotic samples...')
     for i in trange(num_samples):
-        x = init_distribution.sample().view(1, 1)
+        x = init_distribution.sample().view(1, 1).double()
         _ = env.reset(x)
         for t in range(env_time_steps):
             with torch.no_grad():

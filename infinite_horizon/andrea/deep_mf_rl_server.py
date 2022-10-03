@@ -381,8 +381,7 @@ def training(lr_actor, lr_critic, omega_mu, run):
                     # episode = n - 1 where n is the number of sample points
                     sample_std[steps] = np.sqrt(sample_M[steps] / (episode))
 
-                action = sess.run(action_tf_var, feed_dict={
-                    state_placeholder: state})
+                action = sess.run(action_tf_var, feed_dict={state_placeholder: state})
                 # Execute action and observe reward & next state from E
                 # next_state shape=(2,)    
                 # env.step() requires input shape = (1,)
@@ -392,8 +391,7 @@ def training(lr_actor, lr_critic, omega_mu, run):
 
                 # reward_total += reward
                 # V_of_next_state.shape=(1,1)
-                V_of_next_state = sess.run(V, feed_dict=
-                {state_placeholder: next_state})
+                V_of_next_state = sess.run(V, feed_dict={state_placeholder: next_state})
                 # Set TD Target
                 # target = r + gamma * V(next_state)
                 target = reward + gamma * np.squeeze(V_of_next_state)
