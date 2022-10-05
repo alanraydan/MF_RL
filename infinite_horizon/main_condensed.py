@@ -23,6 +23,12 @@ timesteps_per_ep = int(T / dt)
 discount = np.exp(-beta * dt)
 
 
+def new_state(action, state):
+    noise = np.random.normal(loc=0.0, scale=1.0)
+    next_state = state + action * dt + sigma * np.sqrt(dt) * noise
+    return next_state
+
+
 def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     outdir = f'eps{episodes}_rhoV{rho_V}_rhopi{rho_pi}_omega{omega}_run{run_number}'
 
@@ -30,6 +36,8 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     actor = ActorNet(state_dim=1, action_dim=1, lr=rho_pi)
     critic.double()
     actor.double()
+    critic_optimizer = torch.optim.SGD(critic.parameters(), lr=rho_V)
+    actor_optimizer = torch.optim.SGD(actor.parameters(), lr=rho_pi)
 
     state_mean = np.zeros((timesteps_per_ep, 2))
     state_std = np.ones(timesteps_per_ep)
@@ -53,30 +61,26 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
 
         for episode in trange(episodes):
 
-            rho_mean = 1 / (1 + episode) ** omega
-            x0 = np.random.normal(state_mean[-1, 1], state_std[-1])
-            bound = 3 * state_std[-1] + state_mean[-1, 1]
-
+            s_sigma = state_std[-1]
+            x0 = np.random.normal(state_mean[-1, 1], s_sigma)
+            bound = np.array([3 * s_sigma + state_mean[-1, 1]])
             if x0 > bound:
-                x0 = bound.view(1, 1)
+                x0 = bound
             elif x0 < -bound:
-                x0 = -bound.view(1, 1)
+                x0 = -bound
 
             state = np.reshape(x0, (-1, 1))
 
             for t in range(timesteps_per_ep):
+                rho_mean = 1 / (1 + episode)**omega
 
                 # --Update mean field--
-                # state_mean[t, [1, 0]] = state_mean[t, [0, 1]]
-                # state_mean[t, 1] = state_mean[t, 0] + rho_mean * (state - state_mean[t, 0])
                 state_mean[t, 1] = state_mean[t, 1] + rho_mean * (state - state_mean[t, 1])
 
                 # --Welford's algorithm to update standard deviation--
                 sample_M[t] = sample_M[t] + (state - state_mean[t, 0]) * (state - state_mean[t, 1])
                 if episode > 0:
                     state_std[t] = np.sqrt(sample_M[t] / episode)
-                    # lower_bound = torch.tensor([1e-4])
-                    # state_std = torch.sqrt(torch.maximum(sample_M, lower_bound) / episode)
 
                 # --Sample action--
                 state_tensor = torch.tensor(state)
@@ -85,14 +89,13 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 action = action_tensor.numpy()
 
                 # --Observe cost and next state--
-                cost = 0.5 * action**2\
-                       + c1 * (state - c2 * state_mean[t, 1])**2\
-                       + c3 * (state - c4)**2\
-                       + c5 * state_mean[t, 1]
+                cost = (0.5 * action**2
+                       + c1 * (state - c2 * state_mean[t, 1])**2
+                       + c3 * (state - c4)**2
+                       + c5 * state_mean[t, 1]**2) * dt
                 reward = -cost
 
-                dw = np.random.normal(loc=0.0, scale=np.sqrt(dt))
-                next_state = state + action * dt + sigma * dw
+                next_state = new_state(action, state)
                 next_state_tensor = torch.tensor(next_state)
 
                 # --Update critic--
@@ -102,22 +105,16 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 critic_output = critic(state_tensor)
                 delta = target - critic_output
                 critic_loss = delta**2
-                critic.zero_grad()
+                critic_optimizer.zero_grad()
                 critic_loss.backward()
-                with torch.no_grad():
-                    for p in critic.parameters():
-                        sgd_update = p - rho_V * p.grad
-                        p.copy_(sgd_update)
+                critic_optimizer.step()
 
                 # --Update actor--
                 log_prob = action_distribution.log_prob(action_tensor)
-                actor_loss = -delta.detach() * log_prob
-                actor.zero_grad()
+                actor_loss = delta.detach() * log_prob
+                actor_optimizer.zero_grad()
                 actor_loss.backward()
-                with torch.no_grad():
-                    for p in actor.parameters():
-                        sgd_update = p - rho_pi * p.grad
-                        p.copy_(sgd_update)
+                actor_optimizer.step()
 
                 # --Compute 2 norm of grad(delta * log(pi)) and grad(log(pi)--
                 grads = [p.grad.tolist() for p in actor.parameters()]
@@ -151,6 +148,6 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
 
 
 if __name__ == '__main__':
-    runs = ['yee']
+    runs = [4]
     episodes, rho_V, rho_pi, omega = get_params()
     Parallel(n_jobs=len(runs))(delayed(train_actor_critic)(n, episodes, rho_V, rho_pi, omega) for n in runs)

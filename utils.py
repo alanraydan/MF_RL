@@ -33,7 +33,7 @@ def get_params():
 def plot_results(policy, mean, env, episodes, critic_lr, actor_lr, omega, directory=None):
     """
     Plots the learned control and optimal control for the given environment
-    and stores the plots in a file named 'filename'.
+    and stores the plots in `./<directory>/results.png`.
     """
     x_vals = torch.linspace(-1.5, 3, 100).view(-1, 1).double()
     with torch.no_grad():
@@ -105,13 +105,6 @@ def plot_data(step_range, data_dict, directory=None):
 
 def is_exploding(*data):
     return any([abs(d) > 10e3 for d in data])
-
-
-# def file_data(data_dict, directory):
-#     df = pd.DataFrame.from_dict(data_dict)
-#     if not os.path.exists(f'./{directory}'):
-#         os.mkdir(f'./{directory}')
-#     df.to_csv(f'./{directory}/{directory}_data.csv', index_label='time step')
 
 
 def save_actor_critic(actor, critic, directory):

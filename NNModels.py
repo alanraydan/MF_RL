@@ -8,9 +8,9 @@ class CriticNet(nn.Module):
     def __init__(self, state_dim, lr):
         super(CriticNet, self).__init__()
         self.net = nn.Sequential(
-            nn.Linear(state_dim, 64),
+            nn.Linear(state_dim, 128),
             nn.ELU(),
-            nn.Linear(64, 1)
+            nn.Linear(128, 1)
         )
         self.optimizer = Adam(self.net.parameters(), lr=lr)
 
@@ -23,11 +23,11 @@ class ActorNet(nn.Module):
     def __init__(self, state_dim, action_dim, lr):
         super(ActorNet, self).__init__()
         self.shared_layers = nn.Sequential(
-            nn.Linear(state_dim, 32),
+            nn.Linear(state_dim, 64),
             nn.ELU(),
         )
-        self.mean_layer = nn.Linear(32, action_dim)
-        self.std_layer = nn.Linear(32, action_dim)
+        self.mean_layer = nn.Linear(64, action_dim)
+        self.std_layer = nn.Linear(64, action_dim)
 
         all_params = list(self.shared_layers.parameters())\
                      + list(self.mean_layer.parameters())\
