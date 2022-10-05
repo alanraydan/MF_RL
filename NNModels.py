@@ -54,7 +54,7 @@ class ActorCriticNet(nn.Module):
             nn.Linear(64, action_dim),
             nn.Tanh(),
         )
-        self.var = nn.Sequential(
+        self.std = nn.Sequential(
             nn.Linear(64, action_dim),
             nn.Softplus(),
         )
@@ -62,4 +62,4 @@ class ActorCriticNet(nn.Module):
 
     def forward(self, state):
         shared_out = self.shared_layers(state)
-        return self.mu(shared_out), self.var(shared_out), self.value(shared_out)
+        return self.mu(shared_out), self.std(shared_out), self.value(shared_out)
