@@ -29,6 +29,11 @@ def new_state(action, state):
     return next_state
 
 
+def reward_step(action, state, state_mean):
+    cost = 0.5 * action**2 + c1 * (state - c2 * state_mean)**2 + c3 * (state - c4)**2 + c5 * state_mean**2
+    return -(cost * dt)
+
+
 def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     outdir = f'eps{episodes}_rhoV{rho_V}_rhopi{rho_pi}_omega{omega}_run{run_number}'
 
@@ -36,8 +41,8 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     actor = ActorNet(state_dim=1, action_dim=1, lr=rho_pi)
     critic.double()
     actor.double()
-    critic_optimizer = torch.optim.SGD(critic.parameters(), lr=rho_V)
-    actor_optimizer = torch.optim.SGD(actor.parameters(), lr=rho_pi)
+    critic_optimizer = torch.optim.Adam(critic.parameters(), lr=rho_V)
+    actor_optimizer = torch.optim.Adam(actor.parameters(), lr=rho_pi)
 
     state_mean = np.zeros((timesteps_per_ep, 2))
     state_std = np.ones(timesteps_per_ep)
@@ -48,8 +53,8 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
         'actions',
         'critic values',
         'deltas',
-        'grad(log(pi))',
-        'delta * grad(log(pi))',
+        # 'grad(log(pi))',
+        # 'delta * grad(log(pi))',
         'action distribution std',
     )
     episodes_completed = 0
@@ -88,13 +93,8 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 action_tensor = action_distribution.sample()
                 action = action_tensor.numpy()
 
-                # --Observe cost and next state--
-                cost = (0.5 * action**2
-                       + c1 * (state - c2 * state_mean[t, 1])**2
-                       + c3 * (state - c4)**2
-                       + c5 * state_mean[t, 1]**2) * dt
-                reward = -cost
-
+                # --Observe reward and next state--
+                reward = reward_step(action, state, state_mean[t, 1])
                 next_state = new_state(action, state)
                 next_state_tensor = torch.tensor(next_state)
 
@@ -111,16 +111,16 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
 
                 # --Update actor--
                 log_prob = action_distribution.log_prob(action_tensor)
-                actor_loss = delta.detach() * log_prob
+                actor_loss = -delta.detach() * log_prob
                 actor_optimizer.zero_grad()
                 actor_loss.backward()
                 actor_optimizer.step()
 
                 # --Compute 2 norm of grad(delta * log(pi)) and grad(log(pi)--
-                grads = [p.grad.tolist() for p in actor.parameters()]
-                grads = flatten(grads)
-                grads_norm = sum([g ** 2 for g in grads]) ** (1 / 2)
-                norm_grad_log = get_policy_grad(action_distribution, action.item())
+                # grads = [p.grad.tolist() for p in actor.parameters()]
+                # grads = flatten(grads)
+                # grads_norm = sum([g ** 2 for g in grads]) ** (1 / 2)
+                # norm_grad_log = get_policy_grad(action_distribution, action.item())
 
                 log.log_data(
                     state.item(),
@@ -128,8 +128,8 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                     action.item(),
                     critic_output.item(),
                     delta.item(),
-                    norm_grad_log,
-                    grads_norm,
+                    # norm_grad_log,
+                    # grads_norm,
                     action_distribution.scale.item(),
                 )
 
@@ -148,6 +148,6 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
 
 
 if __name__ == '__main__':
-    runs = [4]
+    runs = [0, 1, 2, 3]
     episodes, rho_V, rho_pi, omega = get_params()
     Parallel(n_jobs=len(runs))(delayed(train_actor_critic)(n, episodes, rho_V, rho_pi, omega) for n in runs)

@@ -41,3 +41,25 @@ class ActorNet(nn.Module):
         std = F.softplus(std_pass) + 1e-5
         distribution = D.normal.Normal(mean, std)
         return distribution
+
+
+class ActorCriticNet(nn.Module):
+    def __init__(self, state_dim, action_dim):
+        super(ActorCriticNet, self).__init__()
+        self.shared_layers = nn.Sequential(
+            nn.Linear(state_dim, 64),
+            nn.ELU(),
+        )
+        self.mu = nn.Sequential(
+            nn.Linear(64, action_dim),
+            nn.Tanh(),
+        )
+        self.var = nn.Sequential(
+            nn.Linear(64, action_dim),
+            nn.Softplus(),
+        )
+        self.value = nn.Linear(64, 1)
+
+    def forward(self, state):
+        shared_out = self.shared_layers(state)
+        return self.mu(shared_out), self.var(shared_out), self.value(shared_out)
