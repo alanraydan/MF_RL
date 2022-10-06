@@ -22,20 +22,20 @@ class CriticNet(nn.Module):
 class ActorNet(nn.Module):
     def __init__(self, state_dim, action_dim, lr):
         super(ActorNet, self).__init__()
-        self.shared_layers = nn.Sequential(
+        self.shared_layer = nn.Sequential(
             nn.Linear(state_dim, 64),
             nn.ELU(),
         )
         self.mean_layer = nn.Linear(64, action_dim)
         self.std_layer = nn.Linear(64, action_dim)
 
-        all_params = list(self.shared_layers.parameters())\
+        all_params = list(self.shared_layer.parameters())\
                      + list(self.mean_layer.parameters())\
                      + list(self.std_layer.parameters())
         self.optimizer = Adam(all_params, lr=lr)
 
     def forward(self, state):
-        shared_pass = self.shared_layers(state)
+        shared_pass = self.shared_layer(state)
         mean = self.mean_layer(shared_pass)
         std_pass = self.std_layer(shared_pass)
         std = F.softplus(std_pass) + 1e-5

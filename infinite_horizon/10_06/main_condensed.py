@@ -1,5 +1,5 @@
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 import torch
 import numpy as np
@@ -53,6 +53,7 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
         'actions',
         'critic values',
         'deltas',
+        # 'grad(log(pi))',
         'delta * grad(log(pi))',
         'action distribution std',
     )
@@ -123,12 +124,10 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 actor_optimizer.step()
 
                 # --Compute 2 norm of grad(delta * log(pi)) and grad(log(pi)--
-                grads_norm = 0.0
-                with torch.no_grad():
-                    for p in actor.parameters():
-                        param_norm = p.grad.data.norm(2)
-                        grads_norm += param_norm.item()**2
-                grads_norm = grads_norm**0.5
+                grads = [p.grad.tolist() for p in actor.parameters()]
+                grads = flatten(grads)
+                grads_norm = sum([g ** 2 for g in grads]) ** (1 / 2)
+                # norm_grad_log = get_policy_grad(action_distribution, action.item())
 
                 log.log_data(
                     state.item(),
@@ -136,6 +135,7 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                     action.item(),
                     critic_output.item(),
                     delta.item(),
+                    # norm_grad_log,
                     grads_norm,
                     action_distribution.scale.item(),
                 )
@@ -155,6 +155,6 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
 
 
 if __name__ == '__main__':
-    runs = [1, 2, 3, 4]
+    runs = [4, 5, 6, 7]
     episodes, rho_V, rho_pi, omega = get_params()
     Parallel(n_jobs=len(runs))(delayed(train_actor_critic)(n, episodes, rho_V, rho_pi, omega) for n in runs)

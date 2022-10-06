@@ -4,6 +4,7 @@ import argparse
 import torch
 import matplotlib.pyplot as plt
 from tqdm import trange
+import scipy.stats as stats
 import pandas as pd
 
 
@@ -51,6 +52,7 @@ def plot_results(policy, mean, env, episodes, critic_lr, actor_lr, omega, direct
     ax2 = ax1.twinx()
     asymptotic_state_samples = generate_asymptotic_samples(policy, mean, env, 1000)
     ax2.hist(asymptotic_state_samples.view(1, -1), bins=40, density=True, color='silver')
+    ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:blue')
     ax2.set_ylabel(r'$\mu$')
     ax1.set_zorder(1)
     ax1.patch.set_visible(False)
