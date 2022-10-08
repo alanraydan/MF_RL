@@ -1,5 +1,5 @@
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 import torch
 import numpy as np
@@ -26,18 +26,7 @@ timesteps_per_ep = int(T / dt)
 discount = np.exp(-beta * dt)
 
 # TD-regularization parameter
-eta = 1.0
-
-
-def new_state(action, state):
-    noise = np.random.normal(loc=0.0, scale=1.0)
-    next_state = state + action * dt + sigma * np.sqrt(dt) * noise
-    return next_state
-
-
-def reward_step(action, state, state_mean):
-    cost = 0.5 * action**2 + c1 * (state - c2 * state_mean)**2 + c3 * (state - c4)**2 + c5 * state_mean**2
-    return -(cost * dt)
+eta = 0.1
 
 
 def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
@@ -121,9 +110,10 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 critic_loss.backward()
                 critic_optimizer.step()
 
-                # --Update actor--
+                # --Update actor with TD-regularization--
                 log_prob = action_distribution.log_prob(action_tensor)
-                actor_loss = -delta.detach() * log_prob
+                td_regularization = delta.detach()**2
+                actor_loss = -(delta.detach() - eta * td_regularization) * log_prob
                 actor_optimizer.zero_grad()
                 actor_loss.backward()
                 actor_optimizer.step()
@@ -161,6 +151,6 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
 
 
 if __name__ == '__main__':
-    runs = [0, 1, 2, 3, 4]
+    runs = [1, 2, 3, 4]
     episodes, rho_V, rho_pi, omega = get_params()
     Parallel(n_jobs=len(runs))(delayed(train_actor_critic)(n, episodes, rho_V, rho_pi, omega) for n in runs)
