@@ -67,8 +67,8 @@ if __name__ == '__main__':
     filename, episodes, rho_V, rho_pi, omega = get_params()
     env_time_steps = 100
 
-    critic = CriticNet(state_dim=2, lr=rho_V)
-    actor = ActorNet(state_dim=2, action_dim=1, lr=rho_pi)
+    critic = CriticNet(state_dim=2)
+    actor = ActorNet(state_dim=2, action_dim=1)
     control_mean = np.zeros(env_time_steps)
 
     for k in range(episodes):

@@ -16,7 +16,6 @@ import multiprocessing
 from joblib import Parallel, delayed
 import time
 import itertools
-from tqdm import trange
 
 import os
 
@@ -31,7 +30,7 @@ modstep = 50
 nr_ckp = int(num_episodes // modstep)
 
 global vn_hidden1, pn_hidden1
-vn_hidden1 = 64
+vn_hidden1 = 128
 pn_hidden1 = 64
 
 # lr_actor = 0.000005  #set learning rates
@@ -342,7 +341,7 @@ def training(lr_actor, lr_critic, omega_mu, run):
 
         sample_M = np.zeros(nstep)
 
-        for episode in trange(num_episodes + 1):
+        for episode in range(num_episodes + 1):
             # receive initial state from E
 
             s_sigma = sample_std[-1]
@@ -381,7 +380,8 @@ def training(lr_actor, lr_critic, omega_mu, run):
                     # episode = n - 1 where n is the number of sample points
                     sample_std[steps] = np.sqrt(sample_M[steps] / (episode))
 
-                action = sess.run(action_tf_var, feed_dict={state_placeholder: state})
+                action = sess.run(action_tf_var, feed_dict={
+                    state_placeholder: state})
                 # Execute action and observe reward & next state from E
                 # next_state shape=(2,)    
                 # env.step() requires input shape = (1,)
@@ -391,7 +391,8 @@ def training(lr_actor, lr_critic, omega_mu, run):
 
                 # reward_total += reward
                 # V_of_next_state.shape=(1,1)
-                V_of_next_state = sess.run(V, feed_dict={state_placeholder: next_state})
+                V_of_next_state = sess.run(V, feed_dict=
+                {state_placeholder: next_state})
                 # Set TD Target
                 # target = r + gamma * V(next_state)
                 target = reward + gamma * np.squeeze(V_of_next_state)
@@ -525,13 +526,15 @@ def training(lr_actor, lr_critic, omega_mu, run):
 #         j+=1
 
 # lr_values = [[x,y] for x in lr_v for y in lr_v if x<y ]
+num_cpu = 10
+
 lr_actor = 5e-06
 
 lr_critic = 1e-05
 
 # omega_mu = 0.85
 
-n_run = 4
+n_run = 10
 # omega=np.linspace(0.5,0.6,2)
 # omega=np.linspace(0.7,0.8,2)
 # omega=np.linspace(0.9,1,2)
@@ -556,7 +559,7 @@ if not os.path.exists(p_dir):
 start = time.time()
 
 if __name__ == "__main__":
-    Parallel(n_jobs=n_run)(delayed(training)(lr_actor, lr_critic, par[0], par[1]) for par in par_set)
+    Parallel(n_jobs=num_cpu)(delayed(training)(lr_actor, lr_critic, par[0], par[1]) for par in par_set)
 
 end = time.time()
 print(end - start)

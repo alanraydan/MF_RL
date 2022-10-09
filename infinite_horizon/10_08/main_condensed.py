@@ -1,10 +1,13 @@
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.distributions as D
 import numpy as np
 from infinite_horizon.LqIhEnv import LqIhEnv
-from NNModels import ActorNet, CriticNet
+# from NNModels import ActorNet, CriticNet
 from logger import Logger
 from utils import flatten, get_params, save_actor_critic, get_policy_grad, plot_results
 from tqdm import trange
@@ -26,16 +29,49 @@ timesteps_per_ep = int(T / dt)
 discount = np.exp(-beta * dt)
 
 
-def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
+class ActorNet(nn.Module):
+    def __init__(self):
+        super(ActorNet, self).__init__()
+        self.mu_net = nn.Linear(1, 1)
+        self.sigma_net = nn.Linear(1, 1)
 
+    def forward(self, x):
+        mu = self.mu_net(x)
+        sigma = self.sigma_net(x)
+        assert sigma > 0.0
+        distribution = D.normal.Normal(mu, sigma)
+        return distribution
+
+
+class CriticNet(nn.Module):
+    def __init__(self):
+        super(CriticNet, self).__init__()
+        self.net = nn.Linear(1, 1)
+
+    def forward(self, x):
+        return self.net(x)
+
+
+def new_state(action, state):
+    noise = np.random.normal(loc=0.0, scale=1.0)
+    next_state = state + action * dt + sigma * np.sqrt(dt) * noise
+    return next_state
+
+
+def reward_step(action, state, state_mean):
+    cost = 0.5 * action**2 + c1 * (state - c2 * state_mean)**2 + c3 * (state - c4)**2 + c5 * state_mean**2
+    return -(cost * dt)
+
+
+def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     outdir = f'eps{episodes}_rhoV{rho_V}_rhopi{rho_pi}_omega{omega}_run{run_number}'
 
-    critic = CriticNet(state_dim=1)
-    actor = ActorNet(state_dim=1, action_dim=1)
-    # critic.double()
-    # actor.double()
-    critic_optimizer = torch.optim.Adam(critic.parameters(), lr=rho_V)
-    actor_optimizer = torch.optim.Adam(actor.parameters(), lr=rho_pi)
+    critic = CriticNet()
+    actor = ActorNet()
+    critic.double()
+    actor.double()
+    critic_optimizer = torch.optim.SGD(critic.parameters(), lr=rho_V)
+    actor_optimizer = torch.optim.SGD(actor.parameters(), lr=rho_pi)
 
     state_mean = np.zeros((timesteps_per_ep, 2))
     state_std = np.ones(timesteps_per_ep)
@@ -57,7 +93,6 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
         print('Training model...')
 
         for episode in trange(episodes):
-
             rho_mean = 1 / (1 + episode)**omega
 
             s_sigma = state_std[-1]
@@ -95,8 +130,7 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 ) * dt
                 reward = -cost
 
-                noise = np.random.normal(loc=0.0, scale=1.0)
-                next_state = state + action * dt + sigma * np.sqrt(dt) * noise
+                next_state = state + action * dt + sigma * np.random.normal(loc=0.0, scale=np.sqrt(dt))
                 next_state_tensor = torch.tensor(next_state)
 
                 # --Update critic--
@@ -115,9 +149,21 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 actor_loss = -delta.detach() * log_prob
                 actor_optimizer.zero_grad()
                 actor_loss.backward()
+                if t == 2:
+                    print(f'{list(actor.mu_net.parameters())=}')
+                    print(f'{list(actor.sigma_net.parameters())=}')
+                    print(f'{state=}')
+                    print(f'{action=}')
+                    print(f'{delta.item()=}')
                 actor_optimizer.step()
+                if t == 2:
+                    for p in actor.mu_net.parameters():
+                        print(f'Mu after step {p}')
+                    for p in actor.sigma_net.parameters():
+                        print(f'Sigma after step {p}')
+                    sys.exit(0)
 
-                # --Compute 2 norm of grad(delta * log(pi))--
+                # --Compute 2 norm of grad(delta * log(pi)) and grad(log(pi)--
                 grads_norm = 0.0
                 with torch.no_grad():
                     for p in actor.parameters():

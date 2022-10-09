@@ -37,8 +37,8 @@ def reward_step(action, state, state_mean):
 def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     outdir = f'eps{episodes}_rhoV{rho_V}_rhopi{rho_pi}_omega{omega}_run{run_number}'
 
-    critic = CriticNet(state_dim=1, lr=rho_V)
-    actor = ActorNet(state_dim=1, action_dim=1, lr=rho_pi)
+    critic = CriticNet(state_dim=1)
+    actor = ActorNet(state_dim=1, action_dim=1)
     critic.double()
     actor.double()
     critic_optimizer = torch.optim.Adam(critic.parameters(), lr=rho_V)

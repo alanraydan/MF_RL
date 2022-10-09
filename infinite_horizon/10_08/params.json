@@ -1,0 +1,6 @@
+{
+  "episodes" : 15000,
+  "critic_lr" : 1e-1,
+  "actor_lr" : 1e-1,
+  "omega" : 0.8
+}

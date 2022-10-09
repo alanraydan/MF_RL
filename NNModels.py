@@ -5,14 +5,13 @@ import torch.distributions as D
 
 
 class CriticNet(nn.Module):
-    def __init__(self, state_dim, lr):
+    def __init__(self, state_dim):
         super(CriticNet, self).__init__()
         self.net = nn.Sequential(
             nn.Linear(state_dim, 128),
             nn.ELU(),
             nn.Linear(128, 1)
         )
-        self.optimizer = Adam(self.net.parameters(), lr=lr)
 
     def forward(self, state):
         value = self.net(state)
@@ -20,7 +19,7 @@ class CriticNet(nn.Module):
 
 
 class ActorNet(nn.Module):
-    def __init__(self, state_dim, action_dim, lr):
+    def __init__(self, state_dim, action_dim):
         super(ActorNet, self).__init__()
         self.shared_layer = nn.Sequential(
             nn.Linear(state_dim, 64),
@@ -28,11 +27,6 @@ class ActorNet(nn.Module):
         )
         self.mean_layer = nn.Linear(64, action_dim)
         self.std_layer = nn.Linear(64, action_dim)
-
-        all_params = list(self.shared_layer.parameters())\
-                     + list(self.mean_layer.parameters())\
-                     + list(self.std_layer.parameters())
-        self.optimizer = Adam(all_params, lr=lr)
 
     def forward(self, state):
         shared_pass = self.shared_layer(state)

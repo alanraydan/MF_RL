@@ -1,12 +1,12 @@
 import sys
-sys.path.append('..')
+sys.path.append('../..')
 
 import torch
 import numpy as np
 from infinite_horizon.LqIhEnv import LqIhEnv
 from NNModels import ActorNet, CriticNet
 from logger import Logger
-from utils import flatten, get_params, save_actor_critic, get_policy_grad, plot_results
+from utils import get_params, save_actor_critic, plot_results
 from tqdm import trange
 from joblib import Parallel, delayed
 
@@ -81,23 +81,22 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                     state_std[t] = np.sqrt(sample_M[t] / episode)
 
                 # --Sample action--
-                state_tensor = torch.tensor(state)
+                state_tensor = torch.tensor(state, dtype=torch.float)
                 action_distribution = actor(state_tensor)
                 action_tensor = action_distribution.sample()
                 action = action_tensor.numpy()
 
                 # --Observe reward and next state--
-                cost = (
+                reward = (
                     0.5 * action**2
                     + c1 * (state - c2 * state_mean[t, 1])**2
                     + c3 * (state - c4)**2
                     + c5 * state_mean[t, 1]**2
                 ) * dt
-                reward = -cost
 
                 noise = np.random.normal(loc=0.0, scale=1.0)
                 next_state = state + action * dt + sigma * np.sqrt(dt) * noise
-                next_state_tensor = torch.tensor(next_state)
+                next_state_tensor = torch.tensor(next_state, dtype=torch.float)
 
                 # --Update critic--
                 with torch.no_grad():
@@ -108,13 +107,15 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 critic_loss = delta**2
                 critic_optimizer.zero_grad()
                 critic_loss.backward()
+                torch.nn.utils.clip_grad_norm_(critic.parameters(), max_norm=100)
                 critic_optimizer.step()
 
                 # --Update actor--
                 log_prob = action_distribution.log_prob(action_tensor)
-                actor_loss = -delta.detach() * log_prob
+                actor_loss = delta.detach() * log_prob
                 actor_optimizer.zero_grad()
                 actor_loss.backward()
+                torch.nn.utils.clip_grad_norm_(actor.parameters(), max_norm=100)
                 actor_optimizer.step()
 
                 # --Compute 2 norm of grad(delta * log(pi))--
