@@ -3,7 +3,7 @@ sys.path.append('..')
 
 import torch
 from infinite_horizon.LqIhEnv import LqIhEnv
-from NNModels import ActorNet, CriticNet
+from networks import ActorNet, CriticNet
 from logger import Logger
 from utils import flatten, get_params, plot_results, is_exploding, \
     save_actor_critic, get_policy_grad, learned_policy_mse
@@ -54,7 +54,7 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
                 action = action_distribution.sample()
                 mse = learned_policy_mse(actor, env.optimal_control_mfg)
                 if (mse < mse_tolerance) and flag:
-                    plot_results(actor, state_mean[t, 1], env, episode, rho_V, rho_pi, omega, outdir + 'mse_stop')
+                    plot_results(actor, env, episode, rho_V, rho_pi, omega, sigma, outdir + 'mse_stop')
                     flag = False
 
                 # --Update mean field--
@@ -125,7 +125,7 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     save_actor_critic(actor, critic, outdir)
     log.file_data(outdir)
     final_mean = log.log['state mean'][-1]
-    plot_results(actor, final_mean, env, episodes, rho_V, rho_pi, omega, outdir)
+    plot_results(actor, env, episodes, rho_V, rho_pi, omega, sigma, outdir)
 
 
 if __name__ == '__main__':

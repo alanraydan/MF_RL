@@ -6,7 +6,7 @@ state dynamics and reward are implemented in PriceImpactEnv.py
 
 
 from finite_horizon.PriceImpactEnv import PriceImpactEnv
-from NNModels import ActorNet, CriticNet
+from networks import ActorNet, CriticNet
 import torch
 import numpy as np
 import matplotlib.pyplot as plt

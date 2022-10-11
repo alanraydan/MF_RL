@@ -5,7 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 from tqdm import trange
 import scipy.stats as stats
-import pandas as pd
+import numpy as np
 
 
 def flatten(list_of_lists):
@@ -31,12 +31,13 @@ def get_params():
     return int(params['episodes']), params['critic_lr'], params['actor_lr'], params['omega']
 
 
-def plot_results(policy, mean, env, episodes, critic_lr, actor_lr, omega, directory=None):
+def plot_results(policy, env, episodes, critic_lr, actor_lr, omega, sigma, directory=None):
     """
     Plots the learned control and optimal control for the given environment
     and stores the plots in `./<directory>/results.png`.
+    :param sigma:
     """
-    x_vals = torch.linspace(-1.5, 3, 100).view(-1, 1).double()
+    x_vals = torch.linspace(-1.5, 3, 100).view(-1, 1)
     with torch.no_grad():
         action_mean = policy(x_vals).loc
     fig, ax1 = plt.subplots()
@@ -50,9 +51,9 @@ def plot_results(policy, mean, env, episodes, critic_lr, actor_lr, omega, direct
             f'eps = {episodes}\ncritic lr = {critic_lr}\nactor lr = {actor_lr}\nomega = {omega}',
             transform=ax1.transAxes)
     ax2 = ax1.twinx()
-    asymptotic_state_samples = generate_asymptotic_samples(policy, mean, env, 1000)
+    asymptotic_state_samples = generate_asymptotic_samples(policy, sigma, 1000)
     ax2.hist(asymptotic_state_samples.view(1, -1), bins=40, density=True, color='silver')
-    ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:blue')
+    # ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:blue')
     ax2.set_ylabel(r'$\mu$')
     ax1.set_zorder(1)
     ax1.patch.set_visible(False)
@@ -65,22 +66,22 @@ def plot_results(policy, mean, env, episodes, critic_lr, actor_lr, omega, direct
         plt.show()
 
 
-def generate_asymptotic_samples(policy, mean, env, num_samples):
+def generate_asymptotic_samples(policy, sigma, num_samples):
     """
     Returns a numpy array of samples from the asymptotic distribution for
     the given mean field game problem.
     """
-    env_time_steps = int(env.T / env.dt)
+    num_steps = 2000
+    dt = 1e-2
     samples = torch.zeros(num_samples, 1)
     init_distribution = torch.distributions.normal.Normal(loc=0.0, scale=1.0)
     print('Generating asymptotic samples...')
     for i in trange(num_samples):
-        x = init_distribution.sample().view(1, 1).double()
-        _ = env.reset(x)
-        for t in range(env_time_steps):
+        x = init_distribution.sample().view(1, 1)
+        for t in range(num_steps):
             with torch.no_grad():
                 action = policy(x).loc
-                x, *_ = env.step(action, mean)
+                x = x + action * dt + sigma * np.random.normal(loc=0.0, scale=np.sqrt(dt))
         samples[i] = x
     return samples
 
