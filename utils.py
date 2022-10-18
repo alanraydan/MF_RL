@@ -33,11 +33,12 @@ def get_params():
 
 def plot_results(policy, env, episodes, critic_lr, actor_lr, omega, sigma, directory=None):
     """
-    Plots the learned control and optimal control for the given environment
-    and stores the plots in `./<directory>/results.png`.
-    :param sigma:
+    Plots the learned control and optimal control for the given environment, then generates and plots
+    asymptotic samples of the states reached from following the learned control.
+
+    The plots are saved in `./<directory>/results.png`.
     """
-    x_vals = torch.linspace(-1.5, 3, 100).view(-1, 1)
+    x_vals = torch.linspace(-0.3, 1.8, 100).view(-1, 1)
     with torch.no_grad():
         action_mean = policy(x_vals).loc
     fig, ax1 = plt.subplots()
@@ -53,7 +54,7 @@ def plot_results(policy, env, episodes, critic_lr, actor_lr, omega, sigma, direc
     ax2 = ax1.twinx()
     asymptotic_state_samples = generate_asymptotic_samples(policy, sigma, 1000)
     ax2.hist(asymptotic_state_samples.view(1, -1), bins=40, density=True, color='silver')
-    # ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:blue')
+    ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:blue')
     ax2.set_ylabel(r'$\mu$')
     ax1.set_zorder(1)
     ax1.patch.set_visible(False)
@@ -132,3 +133,12 @@ def learned_policy_mse(policy, benchmark):
     optimal_action = benchmark(x_vals)
     mse = sum((action_mean - optimal_action)**2) / len(x_vals)
     return mse.item()
+
+
+def compute_param_norm(params, squared=False):
+    grads_norm = 0.0
+    with torch.no_grad():
+        for p in params:
+            param_norm = p.grad.data.norm(2)
+            grads_norm += param_norm.item()**2
+    return grads_norm if squared else grads_norm**0.5

@@ -7,12 +7,9 @@ import numpy as np
 import torch
 
 from networks import ActorNet, CriticNet
-from utils import plot_results, get_params, save_actor_critic
+from utils import plot_results, get_params, save_actor_critic, compute_param_norm
 from infinite_horizon.LqIhEnv import LqIhEnv
 from logger import Logger
-
-np.random.seed(1)
-torch.manual_seed(1)
 
 # MF environment parameters
 c1 = 0.25
@@ -28,6 +25,8 @@ m = 0.8
 
 
 def train_actor_critic(n_steps, actor_lr, critic_lr, sigma, outdir):
+    # np.random.seed(1)
+    # torch.manual_seed(1)
 
     log = Logger(
         'states',
@@ -106,18 +105,9 @@ def train_actor_critic(n_steps, actor_lr, critic_lr, sigma, outdir):
     save_actor_critic(actor, critic, outdir)
 
 
-def compute_param_norm(params):
-    grads_norm = 0.0
-    with torch.no_grad():
-        for p in params:
-            param_norm = p.grad.data.norm(2)
-            grads_norm += param_norm.item()**2
-    return grads_norm**0.5
-
-
 if __name__ == '__main__':
-    runs = [1]
+    runs = [0]
     n_steps, critic_lr, actor_lr, _ = get_params()
-    sigma = 0.8
+    sigma = 0.3
     outdir = f'{n_steps}steps_{critic_lr}critic_{actor_lr}actor_{sigma}sigma'
     Parallel(n_jobs=len(runs))(delayed(train_actor_critic)(n_steps, actor_lr, critic_lr, sigma, outdir + f'_run{run}') for run in runs)
