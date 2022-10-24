@@ -153,7 +153,7 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega, outdir):
 
 
 if __name__ == '__main__':
-    runs = [1]
+    runs = ['lessneurons']
     n_episodes, rho_V, rho_pi, omega = get_params()
     outdir = f'{n_episodes}eps_{omega}omega_{rho_V}critic_{rho_pi}actor'
     Parallel(n_jobs=len(runs))(delayed(train_actor_critic)(n, n_episodes, rho_V, rho_pi, omega, outdir + f'_run{n}') for n in runs)

@@ -35,12 +35,15 @@ def train_actor_critic(n_steps, rho_V, rho_pi, omega, outdir):
 
     log = Logger(
         'states',
-        'learned mean',
+        'state mean',
         'actions',
         'action distribution std',
         'critic values',
         'deltas',
-        # 'delta * grad(log(pi))',
+        'grad delta^2',
+        'delta * grad(log(pi))',
+        'grad(V)^2',
+        'rho m',
     )
 
     state = init_dist.sample()
@@ -51,9 +54,12 @@ def train_actor_critic(n_steps, rho_V, rho_pi, omega, outdir):
 
         print('Training model...')
 
+        k = 0
         for t in trange(n_steps):
 
-            rho_mean = 1 / (1 + t)**omega
+            if t % 2000 == 0:
+                rho_mean = 1 / (1 + k)**omega
+                k += 1
 
             # --Update mean field--
             mean = mean + rho_mean * (state - mean)
@@ -74,6 +80,12 @@ def train_actor_critic(n_steps, rho_V, rho_pi, omega, outdir):
             dW = np.random.normal(loc=0.0, scale=np.sqrt(dt))
             next_state = state + action * dt + sigma * dW
 
+            # --Compute 2-norm of grad(critic)--
+            value = critic(state)
+            critic_optimizer.zero_grad()
+            value.backward()
+            grad_V_squared = compute_param_norm(critic.parameters(), squared=True)
+
             # --Update critic--
             with torch.no_grad():
                 v_next = critic(next_state)
@@ -85,12 +97,18 @@ def train_actor_critic(n_steps, rho_V, rho_pi, omega, outdir):
             critic_loss.backward()
             critic_optimizer.step()
 
+            # --Compute 2 norm of grad(delta^2)--
+            critic_grads_norm = compute_param_norm(critic.parameters())
+
             # --Update actor--
             log_prob = action_distribution.log_prob(action)
             actor_loss = -delta.detach() * log_prob
             actor_optimizer.zero_grad()
             actor_loss.backward()
             actor_optimizer.step()
+
+            # --Compute 2 norm of grad(delta * log(pi))--
+            actor_grads_norm = compute_param_norm(actor.parameters())
 
             log.log_data(
                 state.item(),
@@ -99,7 +117,10 @@ def train_actor_critic(n_steps, rho_V, rho_pi, omega, outdir):
                 action_distribution.scale.item(),
                 critic_output.item(),
                 delta.item(),
-                # grads_norm,
+                critic_grads_norm,
+                actor_grads_norm,
+                grad_V_squared,
+                rho_mean,
             )
 
             state = next_state
@@ -107,13 +128,13 @@ def train_actor_critic(n_steps, rho_V, rho_pi, omega, outdir):
     except ValueError:
         print('Values are exploding.')
         print(f'Terminating learning after {t} steps')
-    # save_actor_critic(actor, critic, outdir)
+    save_actor_critic(actor, critic, outdir)
     log.file_data(outdir)
     plot_results(actor, LqIhEnv(), t, rho_V, rho_pi, omega, sigma, outdir)
 
 
 if __name__ == '__main__':
-    runs = [0, 1, 2, 3]
+    runs = ['2000_3']
     n_steps, rho_V, rho_pi, omega = get_params()
     outdir = f'{n_steps}steps_{omega}omega_{rho_V}critic_{rho_pi}actor'
     Parallel(n_jobs=len(runs))(delayed(train_actor_critic)(n_steps, rho_V, rho_pi, omega, outdir + f'_run{run}') for run in runs)
