@@ -3,4 +3,5 @@ __pycache__
 .DS_Store
 old_results
 eps*
-.csv
+*.csv
+*.pt
