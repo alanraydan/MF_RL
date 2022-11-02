@@ -2,5 +2,5 @@
   "episodes" : 3e6,
   "critic_lr" : 1e-5,
   "actor_lr" : 5e-6,
-  "omega" : 0.02
+  "omega" : 0.05
 }

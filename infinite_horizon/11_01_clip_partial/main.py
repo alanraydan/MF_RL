@@ -90,7 +90,8 @@ def train_actor_critic(n_steps, run, rho_V, rho_pi, omega, outdir):
 
             dW = np.random.normal(loc=0.0, scale=np.sqrt(dt))
             next_state = state + action * dt + sigma * dW
-            next_state = torch.clip(next_state, -5, 5)
+            # if t < 200_000:
+            #     next_state = torch.clip(next_state, -5, 5)
 
             # --Compute 2-norm of grad(critic)--
             value = critic(state)
@@ -147,7 +148,7 @@ def train_actor_critic(n_steps, run, rho_V, rho_pi, omega, outdir):
 
 
 if __name__ == '__main__':
-    runs = [0, 1, 2, 3, 4]
+    runs = ["t1", 't2', 't3']
     n_steps, rho_V, rho_pi, omega = get_params()
     outdir = f'{n_steps}steps_{omega}omega'
     Parallel(n_jobs=len(runs))(

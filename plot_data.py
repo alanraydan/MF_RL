@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-PATH = '/Users/alanraydan/Development/mf_rl/infinite_horizon/10_24_clipaction/3000000steps_0.8omega_run7/data.csv'
+PATH = '/Users/alanraydan/Development/mf_rl/infinite_horizon/10_25_clipstates/omega_0.05/3000000steps_0.05omega_run1/data.csv'
 mean_std = {'states': (0.8, 0.234), 'actions': (0.0, 0.192551)}
 omega = 1.0
 rho_V = 1e-5

@@ -1,6 +1,0 @@
-{
-  "episodes" : 1e7,
-  "critic_lr" : 1e-5,
-  "actor_lr" : 5e-6,
-  "omega" : 1.0
-}
