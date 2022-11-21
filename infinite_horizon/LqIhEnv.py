@@ -2,6 +2,7 @@
 MDP discretization of MEAN FIELD LINEAR QUADRATIC environment
 """
 import torch
+import numpy as np
 
 
 class LqIhEnv:
@@ -15,15 +16,15 @@ class LqIhEnv:
 
     def __init__(self):
         self.time_step = None
-        self.c1 = torch.tensor([[0.25]])
-        self.c2 = torch.tensor([[1.5]])
-        self.c3 = torch.tensor([[0.5]])
-        self.c4 = torch.tensor([[0.6]])
-        self.c5 = torch.tensor([[1.0]])
-        self.beta = torch.tensor([[1.0]])
-        self.sigma = torch.tensor([[0.3]])
+        self.c1 = 0.25
+        self.c2 = 1.5
+        self.c3 = 0.5
+        self.c4 = 0.6
+        self.c5 = 1.0
+        self.beta = 1.0
+        self.sigma = 0.3
         self.T = 20  # Infinity horizon truncated at T >> 0
-        self.dt = torch.tensor([[1e-2]])
+        self.dt = 1e-2
 
         self.done = None
         self.x = None
@@ -48,7 +49,7 @@ class LqIhEnv:
 
     # --Helper functions--
     def euler_maruyama(self, action):
-        dw = torch.normal(mean=0.0, std=torch.sqrt(self.dt))
+        dw = torch.normal(mean=0.0, std=np.sqrt(self.dt))
         x_new = self.x + action * self.dt + self.sigma * dw
         return x_new, dw
 
@@ -60,7 +61,7 @@ class LqIhEnv:
 
     # --Benchmark solutions--
     def optimal_control_mfg(self, x):
-        gamma2 = (-self.beta + torch.sqrt(self.beta**2 + 8*(self.c1 + self.c3)))/4
+        gamma2 = (-self.beta + np.sqrt(self.beta**2 + 8*(self.c1 + self.c3)))/4
         m = self.optimal_mean_mfg()
         numerator = -(2 * self.c1 * self.c2 * m + 2 * self.c3 * self.c4)
         denominator = self.beta + 2 * gamma2
@@ -69,13 +70,13 @@ class LqIhEnv:
         return optimal_control
 
     def optimal_mean_mfg(self):
-        gamma2 = (-self.beta + torch.sqrt(self.beta ** 2 + 8 * (self.c1 + self.c3))) / 4
+        gamma2 = (-self.beta + np.sqrt(self.beta ** 2 + 8 * (self.c1 + self.c3))) / 4
         numerator = self.c3 * self.c4
         denominator = gamma2 * (self.beta + 2 * gamma2) - self.c1 * self.c2
         return numerator / denominator
 
     def optimal_control_mfc(self, x):
-        gamma2 = (-self.beta + torch.sqrt(self.beta**2 + 8*(self.c1 + self.c3)))/4
+        gamma2 = (-self.beta + np.sqrt(self.beta**2 + 8*(self.c1 + self.c3)))/4
         m = self.optimal_mean_mfc()
         numerator = 2 * self.c5 * m - 2 * self.c1 * self.c2 * m * (2 - self.c2) - 2 * self.c3 * self.c4
         denominator = self.beta + 2 * gamma2
@@ -84,7 +85,7 @@ class LqIhEnv:
         return optimal_control
 
     def optimal_mean_mfc(self):
-        gamma2 = (-self.beta + torch.sqrt(self.beta ** 2 + 8 * (self.c1 + self.c3))) / 4
+        gamma2 = (-self.beta + np.sqrt(self.beta ** 2 + 8 * (self.c1 + self.c3))) / 4
         numerator = self.c3 * self.c4
         denominator = gamma2 * (self.beta + 2 * gamma2) + self.c5 - self.c1 * self.c2 * (2 - self.c2)
         return numerator/denominator

@@ -31,30 +31,42 @@ def get_params():
     return int(params['episodes']), params['critic_lr'], params['actor_lr'], params['omega']
 
 
-def plot_results(policy, env, episodes, critic_lr, actor_lr, omega, sigma, directory=None):
-    """
-    Plots the learned control and optimal control for the given environment, then generates and plots
-    asymptotic samples of the states reached from following the learned control.
+def plot_learned_mean_error(learned_means, true_mean, directory=None):
+    error = np.abs(learned_means - true_mean)
+    plt.plot(error)
+    plt.xlabel(r'$t$')
+    plt.ylabel(r'$|m_t - m^*|$')
+    plt.title('Learned Mean Absolute Error')
+    plt.grid()
 
-    The plots are saved in `./<directory>/results.png`.
-    """
-    x_vals = torch.linspace(-0.3, 1.8, 100).view(-1, 1)
+    if directory is not None:
+        if not os.path.exists(f'./{directory}'):
+            os.mkdir(f'./{directory}')
+        plt.savefig(f'./{directory}/learned_mean_error.png')
+    else:
+        plt.show()
+
+
+def plot_learned_control_and_distribution(policy, bins, bin_width, distribution, env, episodes, critic_lr, actor_lr, omega, directory=None):
+    x_vals = torch.linspace(-0.8, 1.8, 200).view(-1, 1)
     with torch.no_grad():
         action_mean = policy(x_vals).loc
     fig, ax1 = plt.subplots()
     ax1.plot(x_vals, action_mean, '--', linewidth=2, label='learned control', color='tab:blue')
-    ax1.plot(x_vals, env.optimal_control_mfg(x_vals), linewidth=2, label='MFG control', color='tab:orange')
-    ax1.plot(x_vals, env.optimal_control_mfc(x_vals), linewidth=2, label='MFC control', color='tab:green')
+    ax1.plot(x_vals, env.optimal_control_mfg(x_vals), linewidth=2, label='MFG solution', color='tab:orange')
+    ax1.plot(x_vals, env.optimal_control_mfc(x_vals), linewidth=2, label='MFC solution', color='tab:green')
     ax1.set_xlabel(r'$x$')
     ax1.set_ylabel(r'$\alpha(x)$')
     ax1.legend()
     ax1.text(0.1, 0.1,
-            f'eps = {episodes}\ncritic lr = {critic_lr}\nactor lr = {actor_lr}\nomega = {omega}',
-            transform=ax1.transAxes)
+             f'eps = {episodes}\ncritic lr = {critic_lr}\nactor lr = {actor_lr}\nomega = {omega}',
+             transform=ax1.transAxes)
     ax2 = ax1.twinx()
-    asymptotic_state_samples = generate_asymptotic_samples(policy, sigma, 3000)
-    ax2.hist(asymptotic_state_samples.view(1, -1), bins=40, density=True, color='silver')
-    ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:blue')
+    centered_bins = np.append(bins - bin_width / 2, bins[-1] + bin_width / 2)
+    normalized_dist = distribution / bin_width
+    ax2.bar(centered_bins, normalized_dist, bin_width, color='silver')
+    ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:orange')
+    ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.192, 0.234), color='tab:green')
     ax2.set_ylabel(r'$\mu$')
     ax1.set_zorder(1)
     ax1.patch.set_visible(False)
@@ -67,7 +79,44 @@ def plot_results(policy, env, episodes, critic_lr, actor_lr, omega, sigma, direc
         plt.show()
 
 
-def generate_asymptotic_samples(policy, sigma, num_samples):
+def plot_results(policy, env, episodes, critic_lr, actor_lr, omega, directory=None):
+    """
+    Plots the learned control and optimal control for the given environment, then generates and plots
+    asymptotic samples of the states reached from following the learned control.
+
+    The plots are saved in `./<directory>/results.png`.
+    """
+    x_vals = torch.linspace(-0.8, 1.8, 200).view(-1, 1)
+    with torch.no_grad():
+        action_mean = policy(x_vals).loc
+    fig, ax1 = plt.subplots()
+    ax1.plot(x_vals, action_mean, '--', linewidth=2, label='learned control', color='tab:blue')
+    ax1.plot(x_vals, env.optimal_control_mfg(x_vals), linewidth=2, label='MFG solution', color='tab:orange')
+    ax1.plot(x_vals, env.optimal_control_mfc(x_vals), linewidth=2, label='MFC solution', color='tab:green')
+    ax1.set_xlabel(r'$x$')
+    ax1.set_ylabel(r'$\alpha(x)$')
+    ax1.legend()
+    ax1.text(0.1, 0.1,
+            f'eps = {episodes}\ncritic lr = {critic_lr}\nactor lr = {actor_lr}\nomega = {omega}',
+            transform=ax1.transAxes)
+    ax2 = ax1.twinx()
+    asymptotic_state_samples = generate_asymptotic_samples(policy, env, 3000)
+    ax2.hist(asymptotic_state_samples.view(1, -1), bins=40, density=True, color='silver')
+    ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:orange')
+    ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.192, 0.234), color='tab:green')
+    ax2.set_ylabel(r'$\mu$')
+    ax1.set_zorder(1)
+    ax1.patch.set_visible(False)
+
+    if directory is not None:
+        if not os.path.exists(f'./{directory}'):
+            os.mkdir(f'./{directory}')
+        plt.savefig(f'./{directory}/results.png')
+    else:
+        plt.show()
+
+
+def generate_asymptotic_samples(policy, env, num_samples):
     """
     Returns a numpy array of samples from the asymptotic distribution for
     the given mean field game problem.
@@ -82,7 +131,8 @@ def generate_asymptotic_samples(policy, sigma, num_samples):
         for t in range(num_steps):
             with torch.no_grad():
                 action = policy(x).loc
-                x = x + action * dt + sigma * np.random.normal(loc=0.0, scale=np.sqrt(dt))
+                x = env.step(x, action, None)
+                # x = x + action * dt + sigma * np.random.normal(loc=0.0, scale=np.sqrt(dt))
         samples[i] = x
     return samples
 
