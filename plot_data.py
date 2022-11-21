@@ -2,14 +2,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-PATH = '/infinite_horizon/old_results/10_25_clipstates/omega_0.05/3000000steps_0.05omega_run1/data.csv'
+PATH = '/Users/alanraydan/Development/mf_rl/infinite_horizon/control_continuing_ep/5000eps_run1/data.csv'
 mean_std = {'states': (0.8, 0.234), 'actions': (0.0, 0.192551)}
 omega = 1.0
 rho_V = 1e-5
 
 df = pd.read_csv(PATH)
 
-df_selection = df[:]
+df_selection = df[8_000_000:]
 
 # df_selection.plot(x='time step', figsize=(10, 12), subplots=True, grid=True)
 times = df_selection['time step']
@@ -21,8 +21,8 @@ for n, (col_name, col_data) in enumerate(df_selection.iteritems()):
             mean = mean_std[col_name][0]
             std = mean_std[col_name][1]
             ax[n-1].plot(times, mean * np.ones_like(times))
-            ax[n-1].plot(times, (mean + 2 * std) * np.ones_like(times), color='r')
-            ax[n-1].plot(times, (mean - 2 * std) * np.ones_like(times), color='r')
+            ax[n-1].plot(times, (mean + 3 * std) * np.ones_like(times), color='r')
+            ax[n-1].plot(times, (mean - 3 * std) * np.ones_like(times), color='r')
         if col_name == 'state mean':
             ax[n-1].plot(times, mean_std['states'][0] * np.ones_like(times))
         if col_name == 'rho m':

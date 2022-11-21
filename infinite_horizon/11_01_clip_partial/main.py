@@ -5,11 +5,12 @@ sys.path.append('../..')
 import os
 import torch
 import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 from infinite_horizon.LqIhEnv import LqIhEnv
 from networks import ActorNet, CriticNet
 from logger import Logger
-from utils import get_params, save_actor_critic, plot_results, compute_param_norm
+from utils import get_params, save_actor_critic, plot_results, compute_param_norm, plot_learned_control_and_distribution
 from tqdm import trange
 from joblib import Parallel, delayed
 
@@ -26,6 +27,9 @@ beta = 1.0
 sigma = 0.3
 discount = np.exp(-beta * dt)
 init_dist = torch.distributions.normal.Normal(0.0, 1.0)
+
+dx = 0.1
+bins = np.arange(-1.5, 2.5, dx)
 
 # Logging constants
 # x_eval = torch.linspace(0.8 - 2.6 * 0.234, 0.8 + 2.6 * 0.234, 100).view(-1, 1)  # 99% of states in this range for MFG
@@ -56,6 +60,7 @@ def train_actor_critic(n_steps, run, rho_V, rho_pi, omega, outdir):
     state = init_dist.sample()
     state = state.unsqueeze(0).unsqueeze(0)
     mean = init_dist.mean
+    mu_discrete = np.ones(len(bins) + 1) / (len(bins) + 1)
 
     try:
 
@@ -66,8 +71,12 @@ def train_actor_critic(n_steps, run, rho_V, rho_pi, omega, outdir):
 
             rho_mean = 1 / (1 + t)**omega
 
-            # --Update mean field--
+            # --Update mean field and discrete learned distribution--
             mean = mean + rho_mean * (state - mean)
+            idx = np.digitize(state.numpy(), bins)
+            empirical_dist = np.zeros_like(mu_discrete)
+            empirical_dist[idx] = 1.0
+            mu_discrete = mu_discrete + 1/(1+t)**0.8 * (empirical_dist - mu_discrete)
 
             # --Sample action--
             action_distribution = actor(state)
@@ -90,8 +99,8 @@ def train_actor_critic(n_steps, run, rho_V, rho_pi, omega, outdir):
 
             dW = np.random.normal(loc=0.0, scale=np.sqrt(dt))
             next_state = state + action * dt + sigma * dW
-            # if t < 200_000:
-            #     next_state = torch.clip(next_state, -5, 5)
+            if t < 200_000:
+                next_state = torch.clip(next_state, -5, 5)
 
             # --Compute 2-norm of grad(critic)--
             value = critic(state)
@@ -144,11 +153,12 @@ def train_actor_critic(n_steps, run, rho_V, rho_pi, omega, outdir):
     save_actor_critic(actor, critic, outdir)
     log.file_data(outdir)
     # action_df.to_csv(outdir + '/actions.csv')
-    plot_results(actor, LqIhEnv(), t, rho_V, rho_pi, omega, sigma, outdir)
+    plot_learned_control_and_distribution(actor, bins, dx, mu_discrete, LqIhEnv(), t, rho_V, rho_pi, omega, outdir)
+    # plot_results(actor, LqIhEnv(), t, rho_V, rho_pi, omega, sigma, outdir)
 
 
 if __name__ == '__main__':
-    runs = ["t1", 't2', 't3']
+    runs = [5]
     n_steps, rho_V, rho_pi, omega = get_params()
     outdir = f'{n_steps}steps_{omega}omega'
     Parallel(n_jobs=len(runs))(

@@ -104,14 +104,14 @@ if __name__ == '__main__':
             delta = target.detach() - critic_output
             critic_loss = delta**2
             critic_loss.backward()
-            critic.optimizer.step()
+            critic.optimizer.step(state,, mf
 
             # Update actor
             actor.optimizer.zero_grad()
             log_prob = action_distribution.log_prob(action)
             actor_loss = -delta.detach()*log_prob
             actor_loss.backward()
-            actor.optimizer.step()
+            actor.optimizer.step(state,, mf
 
             # Update mean field
             # --indexing reflects that env has already advanced to the next timestep--

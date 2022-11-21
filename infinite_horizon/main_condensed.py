@@ -146,7 +146,7 @@ def train_actor_critic(run_number, episodes, rho_V, rho_pi, omega):
     save_actor_critic(actor, critic, outdir)
     log.file_data(outdir)
     final_mean = log.log['state mean'][-1]
-    plot_results(actor, LqIhEnv(), episodes_completed, rho_V, rho_pi, omega, sigma, outdir)
+    plot_results(actor, LqIhEnv(), episodes_completed, rho_V, rho_pi, omega, outdir)
 
 
 if __name__ == '__main__':
