@@ -5,7 +5,6 @@ sys.path.append('../..')
 import torch
 from tqdm import trange
 from joblib import Parallel, delayed
-
 from mf_env import IhMfEnv
 from sde import ControlledSde
 from running_cost_func import LqRunningCostFunc
@@ -25,9 +24,14 @@ c5 = 1.0
 beta = 1.0
 init_dist = torch.distributions.normal.Normal(0.0, 1.0)
 
+# Drift and volatility coefficients for SDE
 # mu(s, a, m) = a  and  sigma(s, a, m) = 0.3
-sde = ControlledSde(mu=lambda s, a, m: a, sigma=lambda s, a, m: 0.3)
+SIGMA = 0.3
+sde = ControlledSde(mu=lambda s, a, m: a, sigma=lambda s, a, m: SIGMA)
 running_cost = LqRunningCostFunc(c1, c2, c3, c4, c4)
+
+CLIP_RANGE = 5
+CLIP_DURATION = 200_000
 
 
 def learn_mean_field(n_steps, run, rho_V, rho_pi, omega, outdir):
@@ -60,8 +64,8 @@ def learn_mean_field(n_steps, run, rho_V, rho_pi, omega, outdir):
             # --Observe cost and next state
             next_state, cost = env.step(state, action, torch.distributions.normal.Normal(mean, 1e-5))
             reward = -cost
-            if t < 200_000:
-                next_state = torch.clip(next_state, -5, 5)
+            if t < CLIP_DURATION:
+                next_state = torch.clip(next_state, -CLIP_RANGE, CLIP_RANGE)
 
             # --Update critic--
             with torch.no_grad():

@@ -131,7 +131,7 @@ def generate_asymptotic_samples(policy, env, num_samples):
         for t in range(num_steps):
             with torch.no_grad():
                 action = policy(x).loc
-                x = env.step(x, action, None)
+                x = env.sde.evolve(0.01, x, action, None)
                 # x = x + action * dt + sigma * np.random.normal(loc=0.0, scale=np.sqrt(dt))
         samples[i] = x
     return samples

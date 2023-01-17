@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from running_cost_func import RunningCostFunc, LqRunningCostFunc
+from running_cost_func import RunningCostFunc
 from sde import ControlledSde
 import torch
 import numpy as np
@@ -42,7 +42,7 @@ class IhMfEnv(MfEnv):
         self,
         initial_distribution: torch.distributions,
         beta: float,
-        running_cost: LqRunningCostFunc,
+        running_cost: RunningCostFunc,
         sde: ControlledSde,
         dt: float,
     ) -> None:
