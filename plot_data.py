@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-PATH = '/Users/alanraydan/Development/mf_rl/infinite_horizon/11_01_clip_partial/3000000steps_0.05omega_run3/data.csv'
+PATH = '/Users/alanraydan/Development/mf_rl/infinite_horizon/2023_01_18_dynamic_clipping2/3000000steps_0.8omega_run2/data.csv'
 
 mean_std_mfg = {'states': (0.8, 0.234), 'actions': (0.0, 0.192551)}
 mean_std_mfc = {'states': (0.192, 0.18), 'actions': (0.0, 0.18)}  # Confirm these values
@@ -40,13 +40,13 @@ fig, ax = plt.subplots(3, 2, figsize=(11, 7), sharex=True)
 for n, (col, col_display) in enumerate(zip(col_names, col_display_names)):
     ax[n % 3, n % 2].plot(times, df_selection[col])
     if col == 'states' or col == 'actions':
-        mean = mean_std_mfc[col][0]
-        std = mean_std_mfc[col][1]
+        mean = mean_std_mfg[col][0]
+        std = mean_std_mfg[col][1]
         ax[n % 3, n % 2].plot(times, mean * np.ones_like(times))
         ax[n % 3, n % 2].plot(times, (mean + 3 * std) * np.ones_like(times), color='r')
         ax[n % 3, n % 2].plot(times, (mean - 3 * std) * np.ones_like(times), color='r')
     if col == 'state mean':
-        ax[n % 3, n % 2].plot(times, mean_std_mfc['states'][0] * np.ones_like(times))
+        ax[n % 3, n % 2].plot(times, mean_std_mfg['states'][0] * np.ones_like(times))
     ax[n % 3, n % 2].set_ylabel(col_display, fontsize='xx-large')
     ax[n % 3, n % 2].grid()
 plt.tight_layout()

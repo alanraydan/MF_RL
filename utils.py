@@ -100,7 +100,7 @@ def plot_results(policy, env, episodes, critic_lr, actor_lr, omega, directory=No
             f'eps = {episodes}\ncritic lr = {critic_lr}\nactor lr = {actor_lr}\nomega = {omega}',
             transform=ax1.transAxes)
     ax2 = ax1.twinx()
-    asymptotic_state_samples = generate_asymptotic_samples(policy, env, 3000)
+    asymptotic_state_samples = generate_asymptotic_samples(policy, env, 1000)
     ax2.hist(asymptotic_state_samples.view(1, -1), bins=40, density=True, color='silver')
     ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.8, 0.234), color='tab:orange')
     ax2.plot(x_vals, stats.norm.pdf(x_vals, 0.192, 0.234), color='tab:green')

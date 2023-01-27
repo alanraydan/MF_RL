@@ -5,3 +5,4 @@ old_results
 eps*
 *.csv
 *.pt
+tests
