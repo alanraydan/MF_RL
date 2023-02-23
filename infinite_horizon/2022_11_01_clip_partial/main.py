@@ -158,7 +158,7 @@ def train_actor_critic(n_steps, run, rho_V, rho_pi, omega, outdir):
 
 
 if __name__ == '__main__':
-    runs = [5]
+    runs = [0, 1, 2, 3, 4]
     n_steps, rho_V, rho_pi, omega = get_params()
     outdir = f'{n_steps}steps_{omega}omega'
     Parallel(n_jobs=len(runs))(

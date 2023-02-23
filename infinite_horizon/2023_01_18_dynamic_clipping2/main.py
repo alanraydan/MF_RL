@@ -22,7 +22,7 @@ c3 = 0.5
 c4 = 0.6
 c5 = 1.0
 beta = 1.0
-init_dist = torch.distributions.normal.Normal(10.0, 1.0)
+init_dist = torch.distributions.normal.Normal(0.0, 1.0)
 
 # Drift and volatility coefficients for SDE
 # mu(s, a, m) = a  and  sigma(s, a, m) = 0.3
@@ -143,7 +143,7 @@ def learn_mean_field(n_steps, run, rho_V, rho_pi, omega, outdir):
 
 
 if __name__ == '__main__':
-    runs = [0, 1, 2, 3, 4]
+    runs = [0, 1, 2, 3]
     n_steps, rho_V, rho_pi, omega = get_params()
     outdir = f'{n_steps}steps_{omega}omega'
     Parallel(n_jobs=len(runs))(
