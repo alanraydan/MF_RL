@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from networks import ActorNet
 import torch
 
-POLICY_PATH = '/Users/alanraydan/Development/mf_rl/finite_horizon/trader_problem/300000eps_0.05omega_run4/actor.pt'
+POLICY_PATH = '/Users/alanraydan/Development/mf_rl/finite_horizon/trader_problem/2023_03_09_control/200000eps_0.0omega_run9/actor.pt'
 
 c_alpha = 1.0
 c_x = 2.0
@@ -87,26 +87,33 @@ xs = torch.linspace(-1.5, 1.5, 100)
 times = [0.0, 7/16, 15/16]
 
 controls_at_times = []
+std_at_times = []
 for t in times:
     ts = t * torch.ones_like(xs)
     tx_tensor = torch.stack((ts, xs), dim=1)
     with torch.no_grad():
         learned_control = learned_policy(tx_tensor).mean
+        learned_control_std = learned_policy(tx_tensor).scale
         controls_at_times.append(learned_control.squeeze().numpy())
+        std_at_times.append(learned_control_std.squeeze().numpy())
 
 xs = np.linspace(-1.5, 1.5, 100)
 
-fig, axs = plt.subplots(len(times), 1, figsize=(8, 10))
+fig, axs = plt.subplots(len(times), 1, figsize=(6, 10))
 
 for i, t in enumerate(times):
     axs[i].plot(xs, optimal_control_mfg(t, xs), label='MFG', linewidth=2)
     axs[i].plot(xs, optimal_control_mfc(t, xs), label='MFC', linewidth=2)
     axs[i].plot(xs, controls_at_times[i], label='learned control', linewidth=2, linestyle='--')
+    axs[i].fill_between(xs, controls_at_times[i] - std_at_times[i], controls_at_times[i] + std_at_times[i], color='g', alpha=0.2)
     if i == 0:
         axs[i].legend()
     axs[i].grid()
     axs[i].set_xlabel(f't = {t}')
+    axs[i].set_ylim([-3, 6])
 
-fig.suptitle(r'Learned Control for $\omega^{\nu} = 0.4$')
+fig.suptitle(r'Learned Control $\alpha(t,x)$')
 plt.tight_layout()
+
+plt.savefig(f'{POLICY_PATH[:-9]}/controls.png')
 plt.show()

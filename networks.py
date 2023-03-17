@@ -23,7 +23,7 @@ class ActorNet(nn.Module):
         super(ActorNet, self).__init__()
         self.shared_layer = nn.Sequential(
             nn.Linear(state_dim, 64),
-            nn.ELU(),
+            nn.Tanh(),
         )
         self.mean_layer = nn.Linear(64, action_dim)
         self.std_layer = nn.Linear(64, action_dim)
