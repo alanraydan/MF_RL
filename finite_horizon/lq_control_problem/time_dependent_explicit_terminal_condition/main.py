@@ -23,7 +23,7 @@ from utils import get_params, save_actor_critic
 from plotting_utils import plot_control_and_state_distribution
 
 # Discrete time parameters
-dt = 1/4
+dt = 1/50
 T = 1.0
 times = torch.arange(0.0, T + dt, dt)
 
@@ -94,7 +94,12 @@ def learn_control(n_episodes, run, rho_V, rho_pi, outdir):
 
             # Compute TD error and update critic
             with torch.no_grad():
-                v_next = critic(tx_next) if i < len(times) - 1 else 0.0
+                if i < len(times) - 2:
+                    v_next = critic(tx_next)
+                elif i == len(times) - 2:
+                    v_next = -r * x_next**2
+                else:
+                    v_next = 0.0
                 target = reward + v_next
             critic_output = critic(tx)
             delta = target - critic_output

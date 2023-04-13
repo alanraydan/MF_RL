@@ -57,3 +57,27 @@ class ActorCriticNet(nn.Module):
     def forward(self, state):
         shared_out = self.shared_layers(state)
         return self.mu(shared_out), self.std(shared_out), self.value(shared_out)
+    
+
+class MultiCriticNet(nn.Module):
+    def __init__(self, state_dim, n_critics):
+        super(MultiCriticNet, self).__init__()
+        # Create a list of `n_critics` `CriticNet`s
+        self.critics = nn.ModuleList(
+            [CriticNet(state_dim) for _ in range(n_critics)]
+        )
+
+    def forward(self, state, critic_idx):
+        return self.critics[critic_idx](state)
+
+
+class MultiActorNet(nn.Module):
+    def __init__(self, state_dim, action_dim, n_actors):
+        super(MultiActorNet, self).__init__()
+        # Create a list of `n_actors` `ActorNet`s
+        self.actors = nn.ModuleList(
+            [ActorNet(state_dim, action_dim) for _ in range(n_actors)]
+        )
+
+    def forward(self, state, actor_idx):
+        return self.actors[actor_idx](state)

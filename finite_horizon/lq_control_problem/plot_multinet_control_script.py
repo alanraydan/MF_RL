@@ -10,7 +10,7 @@ import torch
 from networks import ActorNet
 
 
-POLICY_PATH = '/Users/alanraydan/Development/mf_rl/finite_horizon/lq_control_problem/time_dependent_random_x0/500000eps_dt0.25_run1/actor.pt'
+POLICY_PATH = '/Users/alanraydan/Development/mf_rl/finite_horizon/lq_control_problem/time_dependent_multi_net/500000eps_dt0.02_run4/actor.pt'
 
 h = 0.0
 m = 1.0
@@ -20,7 +20,9 @@ d = 0.5
 r = 1.0
 x0_mean = 1.0
 x0_var = 0.5
+dt = 1/50
 T = 1.0
+all_times = np.arange(0.0, T + dt, dt)
 
 # Helper functions to compute benchmark control and benchmark state distribution
 def riccati(t):
@@ -42,71 +44,64 @@ def benchmark_state_std(t):
     variance = integrate.odeint(lambda y, t: 2 * (h - riccati(t)*m/d) * y + sigma**2, x0_var, [0, t])[-1].item()
     return np.sqrt(variance)
 
-
 @torch.no_grad()
-def generate_state_distribution_samples(t, policy, num_samples=5000):
+def generate_state_distribution_samples(t_idx, policy_list, num_samples=5000):
     """
     Generates `num_samples` samples from the state distribution at time `t` under the `policy`.
     Evolution of the state is approximated using Euler-Maruyama discretization.
     """
-    num_time_steps = 100
-    dt = t / num_time_steps
-
     if x0_var == 0:
         x = x0_mean * np.ones((num_samples, 1))
     else:
         x = np.random.normal(loc=x0_mean, scale=np.sqrt(x0_var), size=(num_samples, 1))
-    t = np.zeros((num_samples, 1))
-    for _ in range(num_time_steps):
-        tx = torch.hstack((torch.tensor(t, dtype=torch.float), torch.tensor(x, dtype=torch.float)))
-        action = policy(tx).sample().numpy()
+    x = torch.tensor(x, dtype=torch.float)
+    for i in range(t_idx):
+        action = policy_list[i](x).sample().numpy()
         dW = np.random.normal(loc=0.0, scale=np.sqrt(dt), size=(num_samples, 1))
         x += (h * x + m * action) * dt + sigma * dW
-        t += dt
 
-    return x
+    return x.numpy()
 
-
-learned_policy = ActorNet(state_dim=2, action_dim=1)
-learned_policy.load_state_dict(torch.load(POLICY_PATH))
-learned_policy.eval()
+learned_policy_list = torch.nn.ModuleList([ActorNet(1, 1) for _ in range(len(all_times))])
+learned_policy_list.load_state_dict(torch.load(POLICY_PATH))
+learned_policy_list.eval()
 
 # Choose upper and lower bounds for x axis such that the benchmark control is mostly supported for all times in `times`
-times = [0.0, 1/3, 2/3, 1.0]
-x_lower_bound = min([benchmark_state_mean(t) - 4 * benchmark_state_std(t) for t in times])
-x_upper_bound = max([benchmark_state_mean(t) + 4 * benchmark_state_std(t) for t in times])
+plot_times = [all_times[0], all_times[len(all_times) // 2], all_times[-1]]
+t_idxs = [0, len(all_times) // 2, len(all_times) - 1]
+x_lower_bound = min([benchmark_state_mean(t) - 4 * benchmark_state_std(t) for t in plot_times])
+x_upper_bound = max([benchmark_state_mean(t) + 4 * benchmark_state_std(t) for t in plot_times])
 xs = np.linspace(x_lower_bound, x_upper_bound, 100)
 
 # Choose upper and lower bounds for y axis so that the benchmark control is mostly supported for all times in `times`
-control_lower_bound = min([benchmark_control(t, x) for t in times for x in xs])
-control_upper_bound = max([benchmark_control(t, x) for t in times for x in xs])
+control_lower_bound = min([benchmark_control(t, x) for t in plot_times for x in xs])
+control_upper_bound = max([benchmark_control(t, x) for t in plot_times for x in xs])
 scale = (control_upper_bound - control_lower_bound) * 0.1
 control_lower_bound, control_upper_bound = control_lower_bound - scale, control_upper_bound + scale
 state_dist_lower_bound = 0.0
-state_dist_upper_bound = max([stats.norm.pdf(x, benchmark_state_mean(t), benchmark_state_std(t)) for t in times for x in xs
+state_dist_upper_bound = max([stats.norm.pdf(x, benchmark_state_mean(t), benchmark_state_std(t)) for t in plot_times for x in xs
                               if not np.isnan(stats.norm.pdf(x, benchmark_state_mean(t), benchmark_state_std(t)))]) * 1.1
 
 # Evaluate learned policy
 controls_at_times = []
 std_at_times = []
-for t in times:
-    ts = t * torch.ones_like(torch.tensor(xs, dtype=torch.float))
-    tx_tensor = torch.stack((ts, torch.tensor(xs, dtype=torch.float)), dim=1)
+for t_idx, t in zip(t_idxs, plot_times):
+    x_tensor = torch.tensor(xs, dtype=torch.float).view(-1, 1)
     with torch.no_grad():
-        learned_control = learned_policy(tx_tensor).mean
-        learned_control_std = learned_policy(tx_tensor).scale
+        learned_control = learned_policy_list[t_idx](x_tensor).mean
+        learned_control_std = learned_policy_list[t_idx](x_tensor).scale
         controls_at_times.append(learned_control.squeeze().numpy())
         std_at_times.append(learned_control_std.squeeze().numpy())
 
 # Set up figure for plotting
-fig, axs_control = plt.subplots(len(times), 1, figsize=(6, 8))
+fig, axs_control = plt.subplots(len(plot_times), 1, figsize=(6, 8))
 axs_state = np.empty_like(axs_control)
 for i, ax in enumerate(axs_control):
     axs_state[i] = ax.twinx()
     ax.set_xlim([x_lower_bound, x_upper_bound])
 
 # Plot learned control and benchmark control
-for i, t in enumerate(times):
+for i, (t_idx, t) in enumerate(zip(t_idxs, plot_times)):
     axs_control[i].plot(xs, benchmark_control(t, xs), label='benchmark control', linewidth=2)
     axs_control[i].plot(xs, controls_at_times[i], label='learned control', linewidth=2, linestyle='--', color='g')
     axs_control[i].fill_between(xs, controls_at_times[i] - std_at_times[i], controls_at_times[i] + std_at_times[i], color='g', alpha=0.2)
@@ -117,7 +112,7 @@ for i, t in enumerate(times):
     axs_control[i].set_ylabel(r'$\alpha(x)$')
 
     # Plot state distribution undr learned control and benchmark state distribution
-    state_samples = generate_state_distribution_samples(t, learned_policy)
+    state_samples = generate_state_distribution_samples(t_idx, learned_policy_list)
     axs_state[i].hist(state_samples.squeeze(), bins=40, density=True, color='silver')
     if np.isclose(benchmark_state_std(t), 0.0):
         axs_state[i].axvline(benchmark_state_mean(t), color='tab:orange', linewidth=2)
@@ -131,5 +126,5 @@ for i, t in enumerate(times):
 fig.suptitle(r'Learned Control $\alpha(t,x)$')
 plt.tight_layout()
 
-# plt.savefig(f'{POLICY_PATH[:-9]}/controls.png')
+plt.savefig(f'{POLICY_PATH[:-9]}/controls.png')
 plt.show()

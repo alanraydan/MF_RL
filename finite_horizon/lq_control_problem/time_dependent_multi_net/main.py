@@ -20,10 +20,10 @@ from joblib import Parallel, delayed
 from networks import ActorNet, CriticNet
 from logger import Logger
 from utils import get_params, save_actor_critic
-from plotting_utils import plot_control_and_state_distribution
+# from plotting_utils import plot_control_and_state_distribution
 
 # Discrete time parameters
-dt = 1/4
+dt = 1/50
 T = 1.0
 times = torch.arange(0.0, T + dt, dt)
 
@@ -51,10 +51,10 @@ param_dict = {
 
 def learn_control(n_episodes, run, rho_V, rho_pi, outdir):
 
-    critic = CriticNet(state_dim=2)
-    actor = ActorNet(state_dim=2, action_dim=1)
-    critic_optimizer = torch.optim.Adam(critic.parameters(), lr=rho_V)
-    actor_optimizer = torch.optim.Adam(actor.parameters(), lr=rho_pi)
+    critic_list = torch.nn.ModuleList([CriticNet(state_dim=1) for _ in range(len(times))])
+    actor_list = torch.nn.ModuleList([ActorNet(state_dim=1, action_dim=1) for _ in range(len(times))])
+    critic_optimizer_list = [torch.optim.Adam(critic.parameters(), lr=rho_V) for critic in critic_list]
+    actor_optimizer_list = [torch.optim.Adam(actor.parameters(), lr=rho_pi) for actor in actor_list]
 
     log = Logger(
         'states',
@@ -73,11 +73,8 @@ def learn_control(n_episodes, run, rho_V, rho_pi, outdir):
 
         for i, t in enumerate(times):
 
-            t = t.view((1,))
-            tx = torch.cat((t, x))
-
             # Sample action
-            action_dist = actor(tx)
+            action_dist = actor_list[i](x)
             action = action_dist.sample()
 
             # Observe cost
@@ -90,25 +87,24 @@ def learn_control(n_episodes, run, rho_V, rho_pi, outdir):
             # Observe next state
             dW = np.random.normal(loc=0.0, scale=np.sqrt(dt))
             x_next = x + (h * x + m * action) * dt + sigma * dW
-            tx_next = torch.cat((t + dt, x_next))
 
             # Compute TD error and update critic
             with torch.no_grad():
-                v_next = critic(tx_next) if i < len(times) - 1 else 0.0
+                v_next = critic_list[i + 1](x_next) if i < len(times) - 1 else 0.0
                 target = reward + v_next
-            critic_output = critic(tx)
+            critic_output = critic_list[i](x)
             delta = target - critic_output
             critic_loss = delta**2
-            critic_optimizer.zero_grad()
+            critic_optimizer_list[i].zero_grad()
             critic_loss.backward()
-            critic_optimizer.step()
+            critic_optimizer_list[i].step()
 
             # Update actor
             log_prob = action_dist.log_prob(action)
             actor_loss = -delta.detach() * log_prob
-            actor_optimizer.zero_grad()
+            actor_optimizer_list[i].zero_grad()
             actor_loss.backward()
-            actor_optimizer.step()
+            actor_optimizer_list[i].step()
 
             log.log_data(
                 x.item(),
@@ -120,9 +116,11 @@ def learn_control(n_episodes, run, rho_V, rho_pi, outdir):
 
             x = x_next
 
-    save_actor_critic(actor, critic, outdir)
+    # Save all actor and critic networks using pytorch
+    print('Saving model...')
+    save_actor_critic(actor_list, critic_list, outdir)
     log.file_data(outdir)
-    plot_control_and_state_distribution(param_dict, actor, outdir)
+    # plot_control_and_state_distribution(param_dict, actor, outdir)
 
 
 if __name__ == '__main__':
