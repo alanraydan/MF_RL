@@ -23,7 +23,7 @@ from utils import get_params, save_actor_critic
 from plotting_utils import plot_control_and_state_distribution
 
 # Discrete time parameters
-dt = 1/4
+dt = 1/16
 T = 1.0
 times = torch.arange(0.0, T + dt, dt)
 
@@ -73,7 +73,7 @@ def learn_control(n_episodes, run, rho_V, rho_pi, outdir):
 
         for i, t in enumerate(times):
 
-            t = t.view((1,))
+            t = t.view((1, ))
             tx = torch.cat((t, x))
 
             # Sample action
@@ -126,7 +126,7 @@ def learn_control(n_episodes, run, rho_V, rho_pi, outdir):
 
 
 if __name__ == '__main__':
-    runs = [0, 1, 2, 3, 4]
+    runs = [0]
     n_episodes, rho_V, rho_pi, _ = get_params()
     outdir = f'{n_episodes}eps'
     Parallel(n_jobs=len(runs))(

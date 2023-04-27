@@ -1,0 +1,6 @@
+{
+  "episodes" : 5e5,
+  "critic_lr" : 1e-2,
+  "actor_lr" : 1e-2,
+  "omega" : 0.0
+}

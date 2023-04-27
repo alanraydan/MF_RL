@@ -10,7 +10,7 @@ import torch
 from networks import ActorNet
 
 
-POLICY_PATH = '/Users/alanraydan/Development/mf_rl/finite_horizon/lq_control_problem/time_dependent_random_x0/500000eps_dt0.25_run1/actor.pt'
+POLICY_PATH = '/Users/alanraydan/Development/mf_rl/finite_horizon/lq_control_problem/no_tanh/500000eps_dt0.0625_run0/actor.pt'
 
 h = 0.0
 m = 1.0
@@ -72,9 +72,9 @@ learned_policy.load_state_dict(torch.load(POLICY_PATH))
 learned_policy.eval()
 
 # Choose upper and lower bounds for x axis such that the benchmark control is mostly supported for all times in `times`
-times = [0.0, 1/3, 2/3, 1.0]
-x_lower_bound = min([benchmark_state_mean(t) - 4 * benchmark_state_std(t) for t in times])
-x_upper_bound = max([benchmark_state_mean(t) + 4 * benchmark_state_std(t) for t in times])
+times = [0.0, 0.5, 0.9]
+x_lower_bound = min([benchmark_state_mean(t) - 3 * benchmark_state_std(t) for t in times])
+x_upper_bound = max([benchmark_state_mean(t) + 3 * benchmark_state_std(t) for t in times])
 xs = np.linspace(x_lower_bound, x_upper_bound, 100)
 
 # Choose upper and lower bounds for y axis so that the benchmark control is mostly supported for all times in `times`

@@ -10,7 +10,7 @@ import torch
 from networks import ActorNet
 
 
-POLICY_PATH = '/Users/alanraydan/Development/mf_rl/finite_horizon/lq_control_problem/time_dependent_multi_net/500000eps_dt0.02_run4/actor.pt'
+POLICY_PATH = '/Users/alanraydan/Development/mf_rl/finite_horizon/lq_control_problem/time_dependent_multi_net/800000eps_dt0.02_run0/actor.pt'
 
 h = 0.0
 m = 1.0
